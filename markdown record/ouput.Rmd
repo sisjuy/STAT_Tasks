@@ -1,0 +1,230 @@
+---
+title: "output"
+author: "David"
+date: "2021/11/2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## H_hat
+```{r, echo=FALSE}
+bac_dat=read.csv("data.csv",header=TRUE)
+age=bac_dat$AGE
+alc_res=bac_dat$ALC_RES/100 
+young=alc_res[age<30]
+old=alc_res[age>=30]
+T1 = young
+T2 = old
+data1 = list(T1,T2)
+r = c(0.5,1)
+nboot = 1000
+
+T12 = sort(c(T1,T2))
+
+nboot=nboot
+n1 = length(T1)
+n2 = length(T2)
+n = n1 + n2 
+
+weights1=T1 ^ r[1]
+weights2=T2 ^ r[2]
+WWeights1 = n1/(sum(1/weights1))
+WWeights2 = n2/(sum(1/weights2))
+
+p_hat1 = WWeights1/(n1*weights1)
+p_hat2 = WWeights2/(n2*weights2)
+
+#F hat
+ECDF1 <- apply((matrix(rep(p_hat1,n-1), n-1, n1, byrow=TRUE) * (matrix(rep(T1,n-1), n-1, n1, byrow=TRUE) <= matrix(rep(T12[-n],n1), n-1, n1, byrow=FALSE))), 1, sum) #F_hat1
+ECDF2 <- apply((matrix(rep(p_hat2,n-1), n-1, n2, byrow=TRUE) * (matrix(rep(T2,n-1), n-1, n2, byrow=TRUE) <= matrix(rep(T12[-n],n2), n-1, n2, byrow=FALSE))), 1, sum) #F_hat2
+
+H_hat =  ( n1*ECDF1 + n2*ECDF2 )/n
+dH_hatvec = c(0, H_hat)
+AD6<- ((n1*n2)/n) * sum( ((ECDF1 - ECDF2)^2) / (H_hat*(1-H_hat)) * diff(dH_hatvec))
+
+b1 <- ECDF1 - ECDF2      
+b2 <- b1                 
+a11 <- H_hat*(1-H_hat)   
+a21 <- H_hat%*%t(1-H_hat)
+a22 <- a11
+AD7_unit <- matrix(rep(NA,(n-1)*(n-1)),n-1,n-1)
+print(H_hat)
+```
+## ECDF1
+```{r, echo=FALSE}
+print(ECDF1)
+```
+## ECDF2
+```{r, echo=FALSE}
+print(ECDF2)
+```
+## j,k + matrix + H_hat + ECDF1,2 + p_hat + T1 & T2 & T12 
+a = matrix(rep(p_hat1,n-1), n-1, n1, byrow=TRUE)  
+b = (matrix(rep(T1,n-1), n-1, n1, byrow=TRUE) <= matrix(rep(T12[-n],n1), n-1, n1, byrow=FALSE))  
+ECDF[i] = sum(a[i,]*b[i,])  
+```{r, echo=FALSE}
+kj1={}
+k1={}
+j1={}
+for(k in 2:(n-1)){ #t k=2
+  for(j in 1:(k-1)){ #s j=1
+    if (det(matrix(c(a11[j], a21[j,k], a21[j,k], a22[k]),2,2))==0){
+      #cat("k:",k,"j:",j,"\n")
+      kj1 = append(kj1,paste(k,j,sep=","))
+      k1 = append(k1,k)
+      j1 = append(j1,j)
+    }
+  }
+}
+mat1 = {}
+for(i in c(1:length(k1))){
+  mat = matrix(c(a11[j1[i]], a21[j1[i],k1[i]], a21[j1[i],k1[i]],a22[k1[i]]),2,2)
+  #cat("k=",k1[i],",","j=",j1[i],"\n","matrix:","\n")
+  #print(mat)
+  mat1 = append(mat1,mat)
+}
+#print(mat1)
+#cat(k1[1],j1[1])
+#print(matrix(c(mat1[1]:mat1[4]),2,2))
+
+
+x=1
+for(i in c(1:10)){
+  print("-----------------------------------------------------")
+  cat("\n")
+  cat("j = ",j1[i],"k = ",k1[i])
+  cat("\n")
+  
+  
+  a11cat = paste0("a11[",j1[i],"]")
+  a21cat = paste0("a21[",j1[i],",",k1[i],"]")
+  a22cat = paste0("a22[",k1[i],"]")
+  aamat = matrix(c(a11cat, a21cat, a21cat, a22cat),2,2)
+  cat("matrix with a11&a21 : ","\n")
+  print(aamat)
+  
+  
+  cat("\n")
+  cat("matrix : ","\n")
+  print(matrix(c(mat1[x]:mat1[x+3]),2,2))
+  cat("\n")
+  x = x+4
+  
+  
+  hcat1 = paste0("H_hat[",j1[i],"]","*","(1-H_hat)[",j1[i],"]")
+  hcat2 = paste0("H_hat[",j1[i],"]","*","H_hat[",k1[i],"]")
+  hcat3 = paste0("H_hat[",k1[i],"]","*","(1-H_hat)[",k1[i],"]")
+  hcat = matrix(c(hcat1,hcat2,hcat2,hcat3),2,2)
+  cat("H_hat : ","\n")
+  print(hcat)
+  cat("\n")
+  
+  
+  cat("H_hat with element:","\n")
+  hcat1 = paste0(H_hat[j1[i]],"*",(1-H_hat)[j1[i]])
+  hcat2 = paste0(H_hat[j1[i]],"*",H_hat[k1[i]])
+  hcat3 = paste0(H_hat[k1[i]],"*",(1-H_hat)[k1[i]])
+  hcat = matrix(c(hcat1,hcat2,hcat2,hcat3),2,2)
+  print(hcat)
+  cat("\n")
+  
+  
+  #ecat1 = paste0(ECDF1[j1[i]]," & ",ECDF2[j1[i]])
+  #ecat2 = paste0(ECDF1[j1[i]],ECDF2[j1[i]])
+  print("H_hat[i] correspond to ECDF1[i] & ECDF2[i]")
+  cat("\n")
+  #h_hat's jjjj
+  cat("FOR j","\n")
+  cat("ECDF1:",j1[i],"ECDF2:",j1[i])
+  cat("\n")
+  
+  
+  cat("ECDF1's a & b matrix:", "\n")
+  b = (matrix(rep(T1,n-1), n-1, n1, byrow=TRUE) <= matrix(rep(T12[-n],n1), n-1, n1, byrow=FALSE))
+  a = matrix(rep(p_hat1,n-1), n-1, n1, byrow=TRUE)
+  ## ECDF1[i] = sum(a[i,]*b[i,])
+  print(a[j1[i],])
+  print(b[j1[i],])
+  cat("\n", "the TRUE index in matrix: ","\n")
+  cat("TRUE index = T1<=T12's index","\n")
+  index = which(b[j1[i],] %in% TRUE)
+  print(index)
+  cat("p_hat ith element:","\n")
+  print(a[j1[i],][index])
+  cat("T1 index th element:","\n")
+  print(T1[index])
+  cat("T12",j1[i],"th element:","\n")
+  print(T12[j1[i]])
+  
+  
+  
+  
+  
+  c = matrix(rep(p_hat2,n-1), n-1, n2, byrow=TRUE)
+  d = (matrix(rep(T2,n-1), n-1, n2, byrow=TRUE) <= matrix(rep(T12[-n],n2), n-1, n2, byrow=FALSE))
+  cat("\n")
+  cat("ECDF2's a & b matrix:", "\n")
+  print(c[i,])
+  print(d[i,])
+  cat("\n", "the TRUE index in matrix: ","\n")
+  cat("TRUE index = T2<=T12's index","\n")
+  index = which(d[j1[i],] %in% TRUE)
+  print(index)
+  cat("p_hat ith element:","\n")
+  print(c[j1[i],][index])
+  cat("T2 index th element:","\n")
+  print(T2[index])
+  cat("T12 ith element:","\n")
+  print(T12[j1[i]])
+  
+  #k
+  cat("FOR k","\n")
+  cat("ECDF1:",k1[i],"ECDF2:",k1[i])
+  cat("\n")
+  
+  
+  cat("ECDF1's a & b matrix:", "\n")
+  b = (matrix(rep(T1,n-1), n-1, n1, byrow=TRUE) <= matrix(rep(T12[-n],n1), n-1, n1, byrow=FALSE))
+  a = matrix(rep(p_hat1,n-1), n-1, n1, byrow=TRUE)
+  ## ECDF1[i] = sum(a[i,]*b[i,])
+  print(a[k1[i],])
+  print(b[k1[i],])
+  cat("\n", "the TRUE index in matrix: ","\n")
+  cat("TRUE index = T1<=T12's index","\n")
+  index = which(b[k1[i],] %in% TRUE)
+  print(index)
+  cat("p_hat ith element:","\n")
+  print(a[k1[i],][index])
+  cat("T1 index th element:","\n")
+  print(T1[index])
+  cat("T12",k1[i],"th element:","\n")
+  print(T12[k1[i]])
+  
+  
+  
+  
+  
+  c = matrix(rep(p_hat2,n-1), n-1, n2, byrow=TRUE)
+  d = (matrix(rep(T2,n-1), n-1, n2, byrow=TRUE) <= matrix(rep(T12[-n],n2), n-1, n2, byrow=FALSE))
+  cat("\n")
+  cat("ECDF2's a & b matrix:", "\n")
+  print(c[i,])
+  print(d[i,])
+  cat("\n", "the TRUE index in matrix: ","\n")
+  cat("TRUE index = T2<=T12's index","\n")
+  index = which(d[j1[i],] %in% TRUE)
+  print(index)
+  cat("p_hat ith element:","\n")
+  print(c[j1[i],][index])
+  cat("T2 index th element:","\n")
+  print(T2[index])
+  cat("T12 ith element:","\n")
+  print(T12[j1[i]])
+  cat("\n")
+}
+```
+
+

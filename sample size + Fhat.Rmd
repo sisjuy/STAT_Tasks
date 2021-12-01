@@ -1,0 +1,58 @@
+---
+title: "sample size+plot Fhat(South)"
+author: "David"
+date: "2021/11/28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## conclusion:   
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(Hmisc)
+```
+## Region=South  
+
+```{r, echo=FALSE}
+plotdata <- function(year,group1,group2){
+  
+  
+  wtcdf1=wtd.Ecdf(sort(group1), weights=1/sort(group1^0.5)/(sum(1/sort(group1^0.5))), 
+                  normwt=FALSE, na.rm=TRUE)
+  wtcdf2=wtd.Ecdf(sort(group2), weights=1/sort(group2)/(sum(1/sort(group2))), 
+                  normwt=FALSE, na.rm=TRUE)
+  
+  plot(stepfun(wtcdf1$x[-1],wtcdf1$ecdf),verticals = T,main=as.character(year),
+       do.points = F, xlim=c(0,max(wtcdf1$x,wtcdf2$x)),ylab="")
+  lines(stepfun(wtcdf2$x[-1],wtcdf2$ecdf), verticals = T, do.points = FALSE, col="red")
+  
+}
+out <- function(a){
+  for(i in c(2009:2014)){
+  
+  filepath = paste0("data/Region/South/male/",
+                    as.character(i),".csv")
+  bac_dat=read.csv(filepath,header=TRUE)
+  age=bac_dat$AGE
+  alc_res=bac_dat$ALC_RES/100 
+  young=alc_res[age<a]
+  old=alc_res[age>=a]
+  plotdata(i,young,old)
+  cat("len young: ", length(young),"\n")
+  cat("len old: ", length(old),"\n")
+  }
+}
+
+```
+## age: 30  
+```{r, echo=FALSE}
+out(30)
+```
+
+## age: 35
+```{r, echo=FALSE}
+out(35)
+```

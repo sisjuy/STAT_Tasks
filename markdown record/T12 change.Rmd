@@ -1,0 +1,101 @@
+---
+title: "T12 change"
+author: "David"
+date: "2021/11/20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+
+
+```{r pressure, echo=FALSE}
+bac_dat=read.csv("data.csv",header=TRUE)
+age=bac_dat$AGE
+alc_res=bac_dat$ALC_RES/100 
+young=alc_res[age<30]
+old=alc_res[age>=30]
+T1 = young
+T2 = old
+data1 = list(T1,T2)
+r = c(0.5,1)
+nboot = 1000
+```
+## H_hat
+```{r, echo=FALSE}
+T12 = sort(unique(c(T1,T2)))
+
+nboot=nboot
+n1 = length(T1)
+n2 = length(T2)
+n = n1 + n2 
+nn = length(T12)
+
+weights1=T1 ^ r[1]
+weights2=T2 ^ r[2]
+
+WWeights1 = n1/(sum(1/weights1))
+WWeights2 = n2/(sum(1/weights2))
+
+p_hat1 = WWeights1/(n1*weights1)
+p_hat2 = WWeights2/(n2*weights2)
+
+#F hat
+ECDF1 <- apply((matrix(rep(p_hat1,nn-1), nn-1, n1, byrow=TRUE) * (matrix(rep(T1,nn-1), nn-1, n1, byrow=TRUE) <= matrix(rep(T12[-nn],n1), nn-1, n1, byrow=FALSE))), 1, sum) #F_hat1
+ECDF2 <- apply((matrix(rep(p_hat2,nn-1), nn-1, n2, byrow=TRUE) * (matrix(rep(T2,nn-1), nn-1, n2, byrow=TRUE) <= matrix(rep(T12[-nn],n2), nn-1, n2, byrow=FALSE))), 1, sum) #F_hat2
+
+H_hat =  ( n1*ECDF1 + n2*ECDF2 )/n
+print(H_hat)
+dH_hatvec = c(0, H_hat)
+AD6<- ((n1*n2)/n) * sum( ((ECDF1 - ECDF2)^2) / (H_hat*(1-H_hat)) * diff(dH_hatvec))
+```
+## AD6,AD7,AD7p
+```{r,echo=FALSE}
+
+b1 <- ECDF1 - ECDF2      
+b2 <- b1                 
+a11 <- H_hat*(1-H_hat)   
+a21 <- H_hat%*%t(1-H_hat)
+a22 <- a11
+
+AD7_unit <- matrix(rep(NA,(nn-1)*(nn-1)),nn-1,nn-1)
+for(k in 2:(nn-1)){ #t k=2
+  for(j in 1:(k-1)){ #s j=1
+    Vinv <- solve(matrix(c(a11[j], a21[j,k], a21[j,k], a22[k]),2,2)) 
+    dH_hat_t_vec <- c(0, H_hat[k])
+    dH_hat_s_vec <- c(0, H_hat[j])
+    
+    AD7_unit[j,k] <- (t(c(b1[j], b2[k]))%*%Vinv%*%c(b1[j], b2[k])) * diff(dH_hat_s_vec) * diff(dH_hat_t_vec)
+  }
+}
+AD7 <- (n1*n2/n)*sum(AD7_unit, na.rm=TRUE)  
+AD7p <- AD6 + AD7
+print(AD6)
+print(AD7)
+print(AD7p)
+```
+## b1 & b2
+```{r}
+print(b1)
+print(b2)
+```
+## AD7_unit
+```{r}
+print(AD7_unit)
+```
+
+## a11 + a11 length
+```{r}
+cat("len + a11")
+print(length(a11))
+print(a11)
+```
+## nn
+```{r}
+cat("nn")
+print(nn)
+```

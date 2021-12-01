@@ -1,0 +1,146 @@
+---
+title: "choose jump point"
+author: "David"
+date: "2021/11/20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+
+
+```{r pressure, echo=FALSE}
+bac_dat=read.csv("data.csv",header=TRUE)
+age=bac_dat$AGE
+alc_res=bac_dat$ALC_RES/100 
+young=alc_res[age<30]
+old=alc_res[age>=30]
+T1 = young
+T2 = old
+data1 = list(T1,T2)
+r = c(0.5,1)
+nboot = 1000
+```
+```{r, echo=FALSE}
+T12 = sort(c(T1,T2))
+  
+nboot=nboot
+n1 = length(T1)
+n2 = length(T2)
+n = n1 + n2 
+
+weights1=T1 ^ r[1]
+weights2=T2 ^ r[2]
+
+WWeights1 = n1/(sum(1/weights1))
+WWeights2 = n2/(sum(1/weights2))
+
+p_hat1 = WWeights1/(n1*weights1)
+p_hat2 = WWeights2/(n2*weights2)
+
+#F hat
+ECDF1 <- apply((matrix(rep(p_hat1,n-1), n-1, n1, byrow=TRUE) * (matrix(rep(T1,n-1), n-1, n1, byrow=TRUE) <= matrix(rep(T12[-n],n1), n-1, n1, byrow=FALSE))), 1, sum) #F_hat1
+ECDF2 <- apply((matrix(rep(p_hat2,n-1), n-1, n2, byrow=TRUE) * (matrix(rep(T2,n-1), n-1, n2, byrow=TRUE) <= matrix(rep(T12[-n],n2), n-1, n2, byrow=FALSE))), 1, sum) #F_hat2
+#matrix(rep(p_hat1,n-1), n-1, n1, byrow=TRUE)
+#matrix(rep(T1,n-1), n-1, n1, byrow=TRUE) <= matrix(rep(T12[-n],n1), n-1, n1, byrow=FALSE)
+
+#calculate AD6
+H_hat =  ( n1*ECDF1 + n2*ECDF2 )/n
+#store jump point in h_hat
+H_hat1={}
+i = 2
+while(i<=length(H_hat)){
+  if((H_hat[i])!=(H_hat[i-1])){
+    H_hat1 = append(H_hat1,H_hat[i-1])
+  }
+  if(i==length(H_hat) && H_hat[i]!=H_hat[i-1]){
+    H_hat1 = append(H_hat1, H_hat[i])
+  }
+  i = i + 1 
+}
+
+
+
+
+
+cat("H_hat","\n")
+print(H_hat)
+cat("H_hat1","\n")
+print(H_hat1)
+```
+## AD6, AD7, AD7p
+```{r,echo=FALSE}
+dH_hatvec = c(0, H_hat)
+dH_hatvec1 = c(0,H_hat1)
+
+AD6<- ((n1*n2)/n) * sum( ((ECDF1 - ECDF2)^2) / (H_hat*(1-H_hat)) * diff(dH_hatvec))
+#AD61 <- ((n1*n2)/n) * sum( ((ECDF1 - ECDF2)^2) / (H_hat1*(1-H_hat1)) * diff(dH_hatvec1))
+print(AD6)
+
+b1 <- ECDF1 - ECDF2 
+     
+b11={}
+i = 2
+while(i<=length(b1)){
+  if((b1[i])!=(b1[i-1])){
+    b11 = append(b11,b1[i-1])
+  }
+  if(i==length(b1) && b1[i]!=b1[i-1]){
+    b11 = append(b11, b1[i])
+  }
+  i = i + 1 
+} 
+b2 <- b11 
+a11_1 <- H_hat1*(1-H_hat1)
+a21_1 <- H_hat1%*%t(1-H_hat1)
+a22_1 <- a11_1
+
+nn = length(a11_1)+1
+
+AD7_unit <- matrix(rep(NA,(nn-1)*(nn-1)),nn-1,nn-1)
+
+
+for(k in 2:(nn-1)){ #t k=2
+  for(j in 1:(k-1)){ #s j=1
+      Vinv <- solve(matrix(c(a11_1[j], a21_1[j,k], a21_1[j,k], a22_1[k]),2,2)) #A2 second matrix inv
+      dH_hat_t_vec <- c(0, H_hat1[k])
+      dH_hat_s_vec <- c(0, H_hat1[j])
+      
+      AD7_unit[j,k] <- (t(c(b11[j], b2[k]))%*%Vinv%*%c(b11[j], b2[k])) * diff(dH_hat_s_vec) * diff(dH_hat_t_vec)
+  }
+}
+
+AD7 <- (n1*n2/n)*sum(AD7_unit, na.rm=TRUE)  
+AD7p <- AD6 + AD7
+print(AD7)
+print(AD7p)
+```
+## b1 & b2
+```{r}
+print(b11)
+print(b2)
+```
+
+## AD7_unit
+```{r}
+print(AD7_unit)
+```
+
+## a11 all length
+```{r}
+cat("len + a11")
+print(length(a11_1))
+print(a11_1)
+```
+## nn
+```{r}
+cat("nn")
+print(nn)
+
+```
+
+
