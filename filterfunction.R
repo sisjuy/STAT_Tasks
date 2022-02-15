@@ -67,7 +67,7 @@ datafilter1 <- function(accident_path, person_path, output, state,sex){
   
   step4 = filter(step3, SEX == sex) #sex = male
   step5 = filter(step4, ATST_TYP == 1) #alcohol test = Blood
-  step6 = filter(step5, ALC_RES >= 1, ALC_RES < 96) #BAC>=0.01%
+  step6 = filter(step5, ALC_RES >= 10, ALC_RES < 960) #BAC>=0.01%
   
   
   
@@ -121,7 +121,7 @@ for(i in c(2015:2019)){
   d = read_csv(accident_path, col_names=T, skip = 0)
   x = unique(d$STATE)
 }
-x[-c(1:9)]
+x
 
 # plotdata
 library(Hmisc)
@@ -252,4 +252,9 @@ BS_2sample <- function(data, r, nboot){
   #return(list(AD6=l2[1],AD7=l2[2],AD7p=l2[3]))
 }
 
-
+filepath = paste0("data/Region/South/male/",
+                  as.character(2016),".csv")
+bac_dat=read.csv(filepath,header=TRUE)
+age=bac_dat$AGE
+alc_res=bac_dat$ALC_RES/1000
+round(alc_res,2)

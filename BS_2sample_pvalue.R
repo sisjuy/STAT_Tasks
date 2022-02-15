@@ -1,19 +1,9 @@
-#T12 change
-#load data
-bac_dat=read.csv("data.csv",header=TRUE)
-age=bac_dat$AGE
-alc_res=bac_dat$ALC_RES/100 
-young=alc_res[age<30]
-old=alc_res[age>=30]
-T1 = young
-T2 = old
+T1 <- rbeta(10,6,7)
+T2 <- rbeta(20,3,3)
 data = list(T1,T2)
 r = c(0.5,1)
-nboot = 1000
-
-
-#function
-BS_2sample <- function(data, r=c(0.5,1), nboot=1000){
+nboot = 500
+BS_2sample <- function(data, r, nboot){
   T1 = data[[1]]
   T2 = data[[2]]
   #T12 = sort(c(T1,T2))
@@ -97,27 +87,39 @@ BS_2sample <- function(data, r=c(0.5,1), nboot=1000){
   rej.rate6<- AD6  > quantile(AD6_star,0.95,na.rm=TRUE)
   rej.rate7<- AD7  > quantile(AD7_star,0.95,na.rm=TRUE)
   rej.rate7p<- AD7p > quantile(AD7p_star,0.95,na.rm=TRUE)
+  #p-value: p-value7 < p-value6  
+  p6 <- mean(AD6_star > AD6,na.rm=TRUE)
+  p7 <- mean(AD7_star > AD7,na.rm=TRUE)
+  p7p <- mean(AD7p_star > AD7p, na.rm=TRUE)
+  #na: how many na, output length(na), or output sign of na
+  #length(which(is.na(AD6_star)))==0
+  #length(which(is.na(AD7_star)))==0
+  #length(which(is.na(AD7p_star)))==0
+  
   l1 = list(rej.rate6,rej.rate7,rej.rate7p)
+  star = list(AD6_star,AD7_star,AD7p_star)
+
   l2 = {}
   for(i in c(1:3)){
     if(l1[i]==TRUE){
-      l2[i]="reject"
+      if(length(which(is.na(star[i])))!=0){
+        l2[i]="reject**"
+      }else{
+        l2[i]="reject"
+      }
+      
     }else{
-      l2[i]="not to reject"
+      if(length(which(is.na(star[i])))!=0){
+        l2[i]="not to reject**"
+      }else{
+        l2[i]="not to reject"
+      }
     }
   }
-  return(list(AD6=l2[1],AD7=l2[2],AD7p=l2[3]))
+  BS = list(AD6=l2[1],AD7=l2[2],AD7p=l2[3],
+            p6=p6,p7=p7,p7p=p7p,
+            pcompare=ifelse(p7<p6,"p7<p6","p7>p6"))
+  return(BS)
 }
-BS_2sample(data,r,nboot)
-
-hist(AD6_star)
-c = ecdf(AD6_star)
-c(AD6)
-
-hist(AD7_star)
-c = ecdf(AD7_star)
-c(AD7)
-
-hist(AD7p_star)
-c = ecdf(AD7p_star)
-c(AD7p)
+result = BS_2sample(data,r,nboot)
+result$AD6
