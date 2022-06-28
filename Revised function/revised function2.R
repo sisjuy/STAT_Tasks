@@ -1,0 +1,336 @@
+theta_func = function(s, t, TT, T12, WWeights, weights, ns, ns_sum, nn, H_hat){
+  #testing
+  # s = "t"
+  # t = "t"
+  # TT = list(T1,T2)
+  # T12=T12
+  # WWeights = c(WWeights1, WWeights2)
+  # weights = list(weights1,weights2)
+  # ns = c(n1,n2)
+  # ns_sum = n
+  # nn = nn
+  # H_hat = H_hat
+  #####
+  
+  kk = c(ns[1]/ns_sum, ns[2]/ns_sum) #kk=kappa
+  theta_hat = 0
+  if(s==t){
+    
+    for(j in 1:2){ #(t,t) #test j=1
+      Indicatorf = matrix(rep(TT[[j]],nn), nn, ns[j], byrow=TRUE) <= matrix(rep(T12,ns[j]), nn,ns[j], byrow=FALSE)
+      
+      denominator = matrix(rep((ns_sum * kk[j]^2 * weights[[j]]^2),nrow(Indicatorf)),nrow(Indicatorf),ns[j],byrow = TRUE)
+      
+      theta_hat_temp = ((WWeights[j])^2) * ((Indicatorf-H_hat)^2)/denominator
+      theta_hat_temp_sum = apply(theta_hat_temp, 1, sum)
+      theta_hat = theta_hat + theta_hat_temp_sum
+    }
+  }else{ #(s,t)or(t,s)
+    matrix_temp = list(matrix(rep(NA,(nn)*(nn)),nn,nn),matrix(rep(NA,(nn)*(nn)),nn,nn))
+    
+    for(j in 1:2){ #j=1
+      Indicatorf = matrix(rep(TT[[j]],nn), nn, ns[j], byrow=TRUE) <= matrix(rep(T12,ns[j]), nn, ns[j], byrow=FALSE)
+      s_matrix = Indicatorf - H_hat
+      t_matrix = Indicatorf - H_hat
+      WW = WWeights[j]^2
+      denominator = ns_sum * kk[j]^2 * weights[[j]]^2
+      
+      for(t in 2:(nn)){ #t=2
+        for(s in 1:(t)){ #s=1
+          sum_n = 0
+          theta_hat_temp = c()
+          nj_vec = c()
+          for(ns_temp in 1:ns[j]){ #ns_temp=3
+            nj_temp = WW * s_matrix[s,ns_temp] * t_matrix[t,ns_temp] / denominator[ns_temp]
+            nj_vec = c(nj_vec,nj_temp)
+          }
+          matrix_temp[[j]][s,t] = sum(nj_vec)
+        }
+      }
+      theta_hat = matrix_temp[[1]] + matrix_temp[[2]]
+    }
+  }
+  return(theta_hat)
+}
+
+COV_func = function(data, mean, ns, nn){
+  ###test
+  # data = dinominater_n1_data
+  # mean = dinominater_n1_data_mean
+  # ns = n1
+  # nn = nn
+  ###
+  matrix_temp = matrix(rep(NA,(nn)*(nn)),nn,nn)
+  
+  s_matrix = data - mean
+  t_matrix = data - mean
+  
+  for(t in 2:(nn)){ #t=2
+    for(s in 1:(t)){ #s=1
+      nj_vec = c()
+      for(ns_temp in 1:ns){ #ns_temp=3
+        nj_temp = s_matrix[s,ns_temp] * t_matrix[t,ns_temp]
+        nj_vec = c(nj_vec,nj_temp)
+      }
+      matrix_temp[s,t] = sum(nj_vec)
+    }
+  }
+  return(matrix_temp/ns)  
+}
+
+
+
+T1 = c(3,2,3,4)
+T2 = c(8,8,10)
+data = list(T1,T2)
+r = c(0.5,1)
+nboot = 10
+
+
+filepath = "data/match_condition_data/west_malefemale_35/2018.csv"
+                             
+
+bac_dat=read.csv(filepath,header=TRUE)
+age=bac_dat$AGE
+alc_res=bac_dat$ALC_RES/1000
+alc_res=round(alc_res,2)
+
+young=alc_res[age<35]
+old=alc_res[age>=35]
+data = list(young,old)
+r = c(0.5,1)
+nboot = 1000
+
+BS_2sample_revised <- function(data, r, nboot){
+  #data = data
+  T1 = data[[1]]
+  T2 = data[[2]]
+  n1 = length(T1)
+  n2 = length(T2)
+  n = n1+n2
+  lower_bound=max(min(T1),min(T2))
+  upper_bound=min(rev(unique(sort(T1)))[2],rev(unique(sort(T2)))[2]) 
+  T12_temp <- sort(unique(c(T1,T2)))
+  nn_temp = length(T12_temp)
+  lowerbindx=(1:nn_temp)[abs(T12_temp-lower_bound)==min(abs(T12_temp-lower_bound))]
+  upperbindx=(1:nn_temp)[abs(T12_temp-upper_bound)==min(abs(T12_temp-upper_bound))]
+  T12 = T12_temp[lowerbindx:upperbindx]
+  nn = length(T12)
+                                          
+  weights1=T1 ^ r[1] # #w1
+  weights2=T2 ^ r[2] # #w2
+  weights = c(weights1,weights2)
+  WWeights1 = n1/(sum(1/weights1)) #W1
+  WWeights2 = n2/(sum(1/weights2)) #W2
+  WWeights  = c(WWeights1,WWeights2)
+  
+  kappa = c(n1/n,n2/n)
+  
+  p_hat1 = WWeights1/(n1*weights1)
+  p_hat2 = WWeights2/(n2*weights2)
+  
+  #for loop check
+  # ECDF1test = data.frame()
+  # TF = data.frame()
+  # for (tt in 1:(n-1)){ #t
+  #   for (i in 1:n1){
+  #     ECDF1test[tt,i] = (T1[i] <= T12[tt]) * p_hat1[i]
+  #     TF[tt,i] = (T1[i] <= T12[tt])
+  # }}
+  # ECDF1testsum = apply(ECDF1test, 1, sum)
+  
+  # ECDF1 <- ecdf(T1)
+  # ECDF2 <- ecdf(T2)
+  
+  ECDF1 <- apply((matrix(rep(p_hat1,nn), nn, n1, byrow=TRUE) * (matrix(rep(T1,nn), nn, n1, byrow=TRUE) <= matrix(rep(T12,n1), nn, n1, byrow=FALSE))), 1, sum) #F_hat1
+  ECDF2 <- apply((matrix(rep(p_hat2,nn), nn, n2, byrow=TRUE) * (matrix(rep(T2,nn), nn, n2, byrow=TRUE) <= matrix(rep(T12,n2), nn, n2, byrow=FALSE))), 1, sum) #F_hat2
+  
+  ##0811 ok    
+  ##Error in { : 
+  ##    task 1 failed - "Lapack routine dgesv: system is exactly singular: U[2,2] = 0"
+  ##https://statisticsglobe.com/r-error-in-solve-system-is-exactly-singular
+  
+  # H_hat=-Inf? Yes  0716
+  # bias H_hat=Inf? Yes 0812
+  # H_hat =  ( n1*ECDF1(T12[-n]) + n2*ECDF2(T12[-n]) )/n
+  # H_hat =  ( n1*ECDF1(T12) + n2*ECDF2(T12) )/n 
+  H_hat =  ( n1*ECDF1 + n2*ECDF2 )/n
+  
+  #dH_hatvec = c(0, H_hat[-n])
+  dH_hatvec = c(0, H_hat)
+  
+  theta_hat_t_t = theta_func("t","t",list(T1,T2),T12,c(WWeights1, WWeights2),list(weights1,weights2),c(n1,n2),n,nn,H_hat)
+  
+  #-Inf without[-n]
+  AD6_o<- ((n1*n2)/n) * sum( ((ECDF1 - ECDF2)^2) / (H_hat*(1-H_hat)) * diff(dH_hatvec))
+  AD6_t<- n * sum( ((ECDF1 - ECDF2)^2) / (theta_hat_t_t) * diff(dH_hatvec))
+  
+  #AD7
+  theta_hat_s_t = theta_func("s","t",list(T1,T2),T12,c(WWeights1, WWeights2),list(weights1,weights2),c(n1,n2),n,nn,H_hat)
+  
+  b1  <- ECDF1 - ECDF2 #A2 first matrix[1,1]
+  b2  <- b1 #A2 first matrix[1,2]
+  a11_t <- theta_hat_t_t #A2 second matrix[1,1]
+  a11_o <- H_hat*(1-H_hat) 
+  a21_t <- theta_hat_s_t #A2 second matrix[2,1]&[1,2]
+  a21_o <- H_hat%*%t(1-H_hat) 
+  a22_t <- a11_t #A2 second matrix[2,2]
+  a22_o <- a11_o #A2 second matrix[2,2]
+  
+  AD7_unit_t <- matrix(rep(NA,(nn)*(nn)),nn,nn)
+  AD7_unit_o <- matrix(rep(NA,(nn)*(nn)),nn,nn)
+  for(k in 2:(nn)){  #t k=2
+    for(j in 1:(k-1)){ #s j=1
+      Vinv_t <- solve(matrix(c(a11_t[j], a21_t[j,k], a21_t[j,k], a22_t[k]),2,2)) #A2 second matrix inv
+      Vinv_o <- solve(matrix(c(a11_o[j], a21_o[j,k], a21_o[j,k], a22_o[k]),2,2)) 
+      
+      dH_hat_t_vec <- c(0, H_hat[k])
+      dH_hat_s_vec <- c(0, H_hat[j])
+      
+      AD7_unit_t[j,k] <- (t(c(b1[j], b2[k]))%*%Vinv_t%*%c(b1[j], b2[k])) * diff(dH_hat_s_vec) * diff(dH_hat_t_vec)
+      AD7_unit_o[j,k] <- (t(c(b1[j], b2[k]))%*%Vinv_o%*%c(b1[j], b2[k])) * diff(dH_hat_s_vec) * diff(dH_hat_t_vec)
+      
+    }
+  }
+  
+  
+  AD7_o <- (n1*n2/n)*sum(AD7_unit_o, na.rm=TRUE)  # NA bc for j=1, AD7_unit[1, 1] not defined
+  AD7_t <- n*sum(AD7_unit_t, na.rm=TRUE)  
+  
+  AD7p_t <- AD6_t + AD7_t
+  AD7p_o <- AD6_o + AD7_o
+  
+  
+  AD6_star_t <- rep(NA,nboot)
+  AD7_star_t <- rep(NA,nboot)
+  AD6_star_o <- rep(NA,nboot)
+  AD7_star_o <- rep(NA,nboot)
+  U_boot_H1  <- matrix(0, nrow = nboot, ncol = nn)
+  
+  #b = 1 #for test
+  for(b in 1:nboot){
+    #b=1
+    xi1<- rnorm(n1, 0, 1)
+    xi2<- rnorm(n2, 0, 1)
+    
+    D1_star <- apply(matrix(rep((xi1 * p_hat1),nn), nn, n1, byrow=TRUE) * ((matrix(rep(T1,nn), nn, n1, byrow=TRUE) <= matrix(rep(T12,n1), nn, n1, byrow=FALSE)) - H_hat), 1, sum)
+    D2_star <- apply(matrix(rep((xi2 * p_hat2),nn), nn, n2, byrow=TRUE) * ((matrix(rep(T2,nn), nn, n2, byrow=TRUE) <= matrix(rep(T12,n2), nn, n2, byrow=FALSE)) - H_hat), 1, sum)
+    
+    #AD6
+    # AD_s_unit_6_I1 <- apply(matrix(rep(xi1,n-1), n-1, n1, byrow=TRUE) * ((matrix(rep(T1,n-1), n-1, n1, byrow=TRUE) <= matrix(rep(T12[-n],n1), n-1, n1, byrow=FALSE)) - H_hat[-n]), 1, mean)
+    # AD_s_unit_6_I2 <- apply(matrix(rep(xi2,n-1), n-1, n2, byrow=TRUE) * ((matrix(rep(T2,n-1), n-1, n2, byrow=TRUE) <= matrix(rep(T12[-n],n2), n-1, n2, byrow=FALSE)) - H_hat[-n]), 1, mean)
+    
+    #new dinominater for bootstrap 20220406
+    dinominater_n1_data  <- matrix(rep((xi1 * WWeights1 / (sqrt(kappa[1])*weights1)),nn), nn, n1, byrow=TRUE) * ((matrix(rep(T1,nn), nn, n1, byrow=TRUE) <= matrix(rep(T12,n1), nn, n1, byrow=FALSE)) - H_hat)
+    dinominater_n1_data_mean  <- apply(dinominater_n1_data,1,sum)/n1
+    #data-mean
+    
+    dinominater_n1_temp1 <- dinominater_n1_data - dinominater_n1_data_mean
+    #var
+    dinominater_n1_sum   <- apply(dinominater_n1_temp1^2,1,sum)/n1
+    
+    dinominater_n2_data  <- matrix(rep((xi2 * WWeights2 / (sqrt(kappa[2])*weights2)),nn), nn, n2, byrow=TRUE) * ((matrix(rep(T2,nn), nn, n2, byrow=TRUE) <= matrix(rep(T12,n2), nn, n2, byrow=FALSE)) - H_hat)
+    dinominater_n2_data_mean  <- apply(dinominater_n2_data,1,sum)/n2
+    dinominater_n2_temp1 <- dinominater_n2_data - dinominater_n2_data_mean
+    dinominater_n2_sum   <- apply(dinominater_n2_temp1^2,1,sum)/n2
+    
+    dinominater_bootstrap <- dinominater_n1_sum + dinominater_n2_sum
+    
+    a11_t_dinominater <- dinominater_bootstrap #A2 second matrix[1,1]
+    #0413 COV
+    a21_t_dinominater <- COV_func(dinominater_n1_data,dinominater_n1_data_mean,n1,nn) + COV_func(dinominater_n2_data,dinominater_n2_data_mean,n2,nn) #A2 second matrix[2,1]&[1,2]
+    a22_t_dinominater <- a11_t_dinominater #A2 second matrix[2,2]
+    
+    #for testing: s==t dinominater_bootstrap==a21_t_dinominater?
+    #test=c()
+    #for(i in c(1:nn)){
+    #  test = c(test,a21_t_dinominater[i,i])
+    #}
+    #dinominater_bootstrap == test
+    
+    AD_s_unit_6 <- (D1_star - D2_star) ^ 2
+    AD6_star_o[b] <- (n1*n2/n)*sum(AD_s_unit_6/(H_hat*(1-H_hat))*diff(dH_hatvec), na.rm = TRUE)
+    AD6_star_t[b] <- n*sum(AD_s_unit_6/(dinominater_bootstrap)*diff(dH_hatvec), na.rm = TRUE)
+    
+    
+    #AD7
+    AD7_unit_star_t <- matrix(rep(NA,(nn)*(nn)),nn,nn)
+    AD7_unit_star_o <- matrix(rep(NA,(nn)*(nn)),nn,nn)
+    
+    # b1s_I1 <- apply(matrix(rep(xi1,n-1), n-1, n1, byrow=TRUE) * ((matrix(rep(T1,n-1), n-1, n1, byrow=TRUE) <= matrix(rep(T12[-n],n1), n-1, n1, byrow=FALSE)) - H_hat[-n]), 1, mean)
+    # b1s_I2 <- apply(matrix(rep(xi2,n-1), n-1, n2, byrow=TRUE) * ((matrix(rep(T2,n-1), n-1, n2, byrow=TRUE) <= matrix(rep(T12[-n],n2), n-1, n2, byrow=FALSE)) - H_hat[-n]), 1, mean)
+    b1s <- (D1_star - D2_star)
+    
+    b2s<- b1s # v2
+    
+    for(k in 2:(nn)){  #t
+      for(j in 1:(k-1)){ #s
+        
+        dH_hat_t_vec = c(0, H_hat[k])
+        dH_hat_s_vec = c(0, H_hat[j])
+        
+        Vinv_t <- solve(matrix(c(a11_t_dinominater[j], a21_t_dinominater[j,k], a21_t_dinominater[j,k], a22_t_dinominater[k]),2,2))
+        #Vinv_t <- solve(matrix(c(a11_t[j], a21_t[j,k], a21_t[j,k], a22_t[k]),2,2))
+        Vinv_o <- solve(matrix(c(a11_o[j], a21_o[j,k], a21_o[j,k], a22_o[k]),2,2)) 
+        AD7_unit_star_t[j,k]<- (t(c(b1s[j], b2s[k]))%*%Vinv_t%*%c(b1s[j], b2s[k]))*diff(dH_hat_s_vec)*diff(dH_hat_t_vec)
+        AD7_unit_star_o[j,k]<- (t(c(b1s[j], b2s[k]))%*%Vinv_o%*%c(b1s[j], b2s[k]))*diff(dH_hat_s_vec)*diff(dH_hat_t_vec)
+        
+      }
+    }
+    AD7_star_t[b]<- n*sum(AD7_unit_star_t,na.rm=TRUE)
+    AD7_star_o[b]<- (n1*n2/n)*sum(AD7_unit_star_o,na.rm=TRUE)
+    
+    U_boot_H1[b,]= sqrt(n * AD_s_unit_6/dinominater_bootstrap)
+    
+  }
+  
+  std_simpleCBdistr = apply(abs(-U_boot_H1),1,max)
+  std_simpleCBcrits = as.vector(quantile(std_simpleCBdistr,0.95))
+  tilde_sigma = theta_hat_t_t
+  std_simpleCB_ubs = ECDF1-ECDF2+std_simpleCBcrits/sqrt(sum(n))*sqrt(tilde_sigma)
+  std_simpleCB_lbs = ECDF1-ECDF2-std_simpleCBcrits/sqrt(sum(n))*sqrt(tilde_sigma)
+  #CBrej
+  AD8 = (sum(((std_simpleCB_ubs>=0)*(std_simpleCB_lbs<=0))==0)>1) #that * event is accept; accept=0 is reject; sum rej>1 is at least rej at one t
+  
+  
+  
+  AD7p_star_t  <- AD6_star_t + AD7_star_t
+  rej.rate6_t <- AD6_t  > quantile(AD6_star_t,0.95)
+  rej.rate7_t <- AD7_t  > quantile(AD7_star_t,0.95)
+  rej.rate7p_t <- AD7p_t > quantile(AD7p_star_t,0.95)
+  
+  AD7p_star_o  <- AD6_star_o + AD7_star_o
+  rej.rate6_o <- AD6_o  > quantile(AD6_star_o,0.95)
+  rej.rate7_o <- AD7_o  > quantile(AD7_star_o,0.95)
+  rej.rate7p_o <- AD7p_o > quantile(AD7p_star_o,0.95) 
+  
+  p6_t <- mean(AD6_star_t >= AD6_t,na.rm=TRUE)
+  p7_t <- mean(AD7_star_t >= AD7_t,na.rm=TRUE)
+  p7p_t <- mean(AD7p_star_t >= AD7p_t, na.rm=TRUE)
+  
+  p6_o <- mean(AD6_star_o >= AD6_o,na.rm=TRUE)
+  p7_o <- mean(AD7_star_o >= AD7_o,na.rm=TRUE)
+  p7p_o <- mean(AD7p_star_o >= AD7p_o, na.rm=TRUE)
+  
+  out_array=list(
+    rej.rate6_o=rej.rate6_o,
+    rej.rate7_o=rej.rate7_o,
+    rej.rate7p_o=rej.rate7p_o,
+    rej.rate6_t=rej.rate6_t,
+    rej.rate7_t=rej.rate7_t,
+    rej.rate7p_t=rej.rate7p_t,
+    rej.rate8=AD8
+  )
+  p = list(
+    p6_o = p6_o,
+    p7_o = p7_o,
+    p7p_o = p7p_o,
+    p6_t = p6_t,
+    p7_t = p7_t,
+    p7p_t = p7p_t
+  )
+  return(c(out_array,p))
+}
+
+BS_2sample_revised(data,r,nboot)
+

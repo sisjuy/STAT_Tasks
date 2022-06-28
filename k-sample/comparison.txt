@@ -1,0 +1,80 @@
+##### 2-sample tao code
+
+  T1 = data[[1]]
+  T2 = data[[2]]
+  n1 = length(T1)
+  n2 = length(T2)
+  n = n1+n2
+  lower_bound=max(min(T1),min(T2))
+  upper_bound=min(rev(unique(sort(T1)))[2],rev(unique(sort(T2)))[2]) 
+  T12_temp <- sort(unique(c(T1,T2)))
+  nn_temp = length(T12_temp)
+  lowerbindx=(1:nn_temp)[abs(T12_temp-lower_bound)==min(abs(T12_temp-lower_bound))]
+  upperbindx=(1:nn_temp)[abs(T12_temp-upper_bound)==min(abs(T12_temp-upper_bound))]
+  T12 = T12_temp[lowerbindx:upperbindx]
+  nn = length(T12)
+
+##### k-sample tao code
+
+alldata = c()
+mindata = c()
+ns = c()
+cal = c()
+weights = list()
+WWeights = c()
+
+for(i in 1:length(data)){
+  alldata = c(alldata,data[[i]])
+  mindata = c(mindata,min(data[[i]]))
+  ns = c(ns,length(data[[i]]))
+  cal = c(cal,rev(unique(sort(data[[i]])))[2])
+  weights[[i]] = data[[i]]^r[i]
+  WWeights = c(WWeights,ns[i]/(sum(1/weights[[i]])))
+}
+n = sum(ns)
+lower_bound = max(mindata)
+upper_bound = min(cal)
+T12_temp <- sort(unique(alldata))
+nn_temp = length(T12_temp)
+lowerbindx=(1:nn_temp)[abs(T12_temp-lower_bound)==min(abs(T12_temp-lower_bound))]
+upperbindx=(1:nn_temp)[abs(T12_temp-upper_bound)==min(abs(T12_temp-upper_bound))]
+T12 = T12_temp[lowerbindx:upperbindx]
+nn = length(T12)
+
+##### k-sample theta function (s,t)
+
+    matrix_temp = list()
+    
+    for(i in 1:length(data)){
+      matrix_temp[[i]] = matrix(rep(NA,(nn)*(nn)),nn,nn)
+    }
+
+    
+    for(j in 1:length(data)){ #j=1
+      Indicatorf = matrix(rep(TT[[j]],nn), nn, ns[j], byrow=TRUE) <= matrix(rep(T12,ns[j]), nn, ns[j], byrow=FALSE)
+      s_matrix = Indicatorf - H_hat
+      t_matrix = Indicatorf - H_hat
+      WW = WWeights[j]^2
+      denominator = ns_sum * kk[j]^2 * weights[[j]]^2
+      
+      for(t in 2:(nn)){ #t=2
+        for(s in 1:(t-1)){ #s=1
+          sum_n = 0
+          theta_hat_temp = c()
+          nj_vec = c()
+          for(ns_temp in 1:ns[j]){ #ns_temp=3
+            nj_temp = WW * s_matrix[s,ns_temp] * t_matrix[t,ns_temp] / denominator[ns_temp]
+            nj_vec = c(nj_vec,nj_temp)
+          }
+          matrix_temp[[j]][s,t] = sum(nj_vec)
+          #print(matrix_temp)
+        }
+        
+      }
+      #print(matrix_temp)
+      
+      theta_hat = Reduce("+", matrix_temp)
+      
+    }
+    return(list(theta_hat=theta_hat,theta_hat_j=matrix_temp))
+  }

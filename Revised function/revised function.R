@@ -80,7 +80,7 @@ BS_2sample_revised <- function(data, r, nboot){
   T1 = data[[1]]
   T2 = data[[2]]
   T12 <- sort(unique(c(T1,T2)))
- 
+  
   nboot=nboot
   n1 = length(T1)
   n2 = length(T2)

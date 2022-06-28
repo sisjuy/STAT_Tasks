@@ -1,20 +1,133 @@
 library(Hmisc)
 
-filepath = "data/match_condition_data/midwest+west_male_30/2009.csv"
+filepath1 = "data/match_condition_data/west_malefemale_35/2018.csv"
+filepath2 = "data/match_condition_data/northeast+midwest_malefemale_35/2018.csv"
+bac_dat1=read.csv(filepath1,header=TRUE)
+age1=bac_dat1$AGE
+alc_res1=bac_dat1$ALC_RES/1000
+alc_res1=round(alc_res1,2)
+
+young1=alc_res1[age1<35]
+old1=alc_res1[age1>=35]
+
+bac_dat2=read.csv(filepath2,header=TRUE)
+age2=bac_dat2$AGE
+alc_res2=bac_dat2$ALC_RES/1000
+alc_res2=round(alc_res2,2)
+
+young2=alc_res2[age2<35]
+old2=alc_res2[age2>=35]
+
+
+label_size=1.8*1.8
+tcl_size=0.3*1.8
+axis_size=1.5*1.6
+position_lab=3.7*1.8
+bot_left_mar=6*1.8
+lwd=1.5*1.8
+right_mar=0.5 #added 20150127
+#####
+
+pdf("Figure_west_ecdf.pdf",width=10.4,height=10)
+#setEPS()
+#postscript("paper1_fig3.eps", height=10, width=5.2) #for SJS
+par(mfrow=c(1,1),mar=c(bot_left_mar,bot_left_mar,1,right_mar),oma=c(0,0,0,1),las=1) #mar: bottom, left.. affect title(...line=?)!
+require(graphics)
+
+#ecdf:
+young_ecdf1=ecdf(young1)
+old_ecdf1=ecdf(old1)
+
+young_ecdf2=ecdf(young2)
+old_ecdf2=ecdf(old2)
+
+plot(old_ecdf1, 
+     verticals = TRUE, do.points = FALSE,main="",xlim=c(0,50/100),ylim=c(0,1),lty=2,lwd=lwd,cex.axis=axis_size,xlab="",ylab="",xaxs="i",yaxs="i",xaxt="n",yaxt="n",las=1,cex=0.7,tcl=tcl_size,frame.plot=FALSE)
+lines(young_ecdf1, verticals = TRUE, do.points = FALSE,lwd=lwd,lty=1)
+axis(1, at=seq(0,50/100,by=10/100),las=1,tcl=tcl_size,cex.axis=axis_size) #side=1: bottom
+axis(2, at=seq(0,1,by=0.2),las=1,tcl=tcl_size,cex.axis=axis_size) #side=1: bottom
+title(xlab="BAC (g/dL)",cex.lab=label_size) #added 20150124
+title(ylab="ecdf",cex.lab=label_size,line=position_lab)
+
+dev.off()
+
+pdf("Figure_northeast+midwest_NPMLE.pdf",width=10.4,height=10)
+#setEPS()
+#postscript("paper1_fig3.eps", height=10, width=5.2) #for SJS
+par(mfrow=c(1,1),mar=c(bot_left_mar,bot_left_mar,1,right_mar),oma=c(0,0,0,1),las=1) #mar: bottom, left.. affect title(...line=?)!
+require(graphics)
+
+
+#weighted ecdfs
+young = young2
+old = old2
+young_wtcdf=wtd.Ecdf(sort(young), weights=1/sort(young^0.5)/(sum(1/sort(young^0.5))), 
+                     #type=c('i/n','(i-1)/(n-1)','i/(n+1)'), 
+                     normwt=FALSE, na.rm=TRUE)
+old_wtcdf=wtd.Ecdf(sort(old), weights=1/sort(old)/(sum(1/sort(old))), 
+                   #type=c('i/n','(i-1)/(n-1)','i/(n+1)'), 
+                   normwt=FALSE, na.rm=TRUE)
+
+plot(stepfun(old_wtcdf$x[-1],old_wtcdf$ecdf), 
+     verticals = TRUE, do.points = FALSE,main="",xlim=c(0,50/100),ylim=c(0,1),lty=2,lwd=lwd,cex.axis=axis_size,xlab="",ylab="",xaxs="i",yaxs="i",xaxt="n",yaxt="n",las=1,cex=0.7,tcl=tcl_size,frame.plot=FALSE)
+abline(h=1,lty=2,col="gray",lwd=lwd)
+lines(stepfun(young_wtcdf$x[-1],young_wtcdf$ecdf), verticals = TRUE, do.points = FALSE,lwd=lwd,lty=1)
+axis(1, at=seq(0,50/100,by=10/100),las=1,tcl=tcl_size,cex.axis=axis_size) #side=1: bottom
+axis(2, at=seq(0,1,by=0.2),las=1,tcl=tcl_size,cex.axis=axis_size) #side=1: bottom
+title(xlab="BAC (g/dL)",cex.lab=label_size)
+title(ylab=expression(paste(hat(F))),cex.lab=label_size,line=position_lab)
+
+
+dev.off()
 
 
 
-bac_dat=read.csv(filepath,header=TRUE)
+
+
+for(i in c(filepath1,filepath2)){
+  bac_dat=read.csv(i,header=TRUE)
+  age=bac_dat$AGE
+  alc_res=bac_dat$ALC_RES/1000
+  alc_res=round(alc_res,2)
+  
+  young=alc_res[age<35]
+  old=alc_res[age>=35]
+  data = list(young,old)
+  r=c(0.5,1)
+  nboot=1000
+  group1 = young
+  group2 = old
+  
+  young_ecdf=ecdf(young)
+  old_ecdf=ecdf(old)
+  plot(old_ecdf,verticals = TRUE, do.points = FALSE,ylim=c(0,1),main=i)
+  lines(young_ecdf, verticals = TRUE, do.points = FALSE,col="red")
+}
+
+bac_dat=read.csv(filepath1,header=TRUE)
 age=bac_dat$AGE
-alc_res=bac_dat$ALC_RES/100  
+alc_res=bac_dat$ALC_RES/1000
+alc_res=round(alc_res,2)
 
-young=alc_res[age<30]
-old=alc_res[age>=30]
+young=alc_res[age<35]
+old=alc_res[age>=35]
 data = list(young,old)
 r=c(0.5,1)
 nboot=1000
+group1 = young
+group2 = old
+main = "west"
+young_ecdf=ecdf(young)
+old_ecdf=ecdf(old)
+
+plot(old_ecdf,verticals = TRUE, do.points = FALSE,xlim=c(0,40/100),ylim=c(0,1),main=main)
+lines(young_ecdf, verticals = TRUE, do.points = FALSE,col="red")
+
+
 
 plotdata <- function(year,group1,group2){
+  group1 = young
+  group2 = old
   wtcdf1=wtd.Ecdf(sort(group1), weights=1/sort(group1^0.5)/(sum(1/sort(group1^0.5))), 
                   normwt=FALSE, na.rm=TRUE)
   wtcdf2=wtd.Ecdf(sort(group2), weights=1/sort(group2)/(sum(1/sort(group2))), 
@@ -57,7 +170,7 @@ crosscheck <- function(c1,c2){
   }
 }
 BS_2sample_revised <- function(data, r, nboot,year,young,old){
-  #data = data
+  data = data
   T1 = data[[1]]
   T2 = data[[2]]
   T12 <- sort(unique(c(T1,T2)))
