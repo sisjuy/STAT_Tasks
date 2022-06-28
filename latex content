@@ -1,0 +1,80 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+
+\title{BS_2sample}
+\author{ABCD}
+\date{February 2022}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage[all]{hypcap}
+\usepackage{subcaption}
+\usepackage{caption}
+
+
+
+\begin{document}
+
+\maketitle
+
+\section{Real data example}
+
+
+
+
+
+
+BAC data was collected from the U.S. National Highway Traffic Safety Administration. We analyze whole blood test results of drivers engaged in interstate highway accidents during 2018.
+
+We divide the data into two groups: young group ($<35$ years old) and old group ($\geq35$ years old). The younger group tend to be influenced by alcohol, which contribute to higher chance of sampling at lower levels of BAC in the younger group. As a result, the effect of sampling bias is different between these two groups, as discussed by "2010 paper".  We specify the weight functions to be $w_y(x) = \sqrt{x}$ and $w_o(x) = x$ for the younger and older groups, respectively. Under each weight function, we calculate NPMLEs for the underlying distribution function. Two groups each have a curve.
+
+We consider two scenarios: non-crossing(figure\ref{fig:1_NPMLE}) and crossing curves(figure\ref{fig:2_NPMLE}) between two groups. The non-crossing scenario is based on the data which comes from the West region. There are 196 younger and 156 older drivers. The NPMLE(figure3) shows that BAC in the younger group is significantly larger than in the older group. However, the empirical cdfs(figure4) indicate that there is no obvious difference between two biased distribution. 
+
+The crossing scenario is based on the data which comes from the Northeast-Midwest region. There are 138 younger and older drivers, respectively. The estimated function(figure) suggests that a little bit crossing near the end, whereas empirical cdfs(figure) show there is no difference fortunately.
+
+\begin{figure}[htp]
+%
+\begin{subfigure}{0.5\textwidth}
+\includegraphics[width=1\linewidth, height=1\linewidth]{Figure_west_NPMLE.pdf} 
+\captionsetup{justification=centering}
+\caption{the West region\\  (non-crossing)}
+\label{fig:1_NPMLE}
+\end{subfigure}
+%
+%
+\begin{subfigure}{0.5\textwidth}
+\includegraphics[width=1\linewidth,height=1\linewidth]{Figure_northeast+midwest_NPMLE.pdf}
+\captionsetup{justification=centering}
+\caption{the Northeast-Midwest region\\  (crossing)}
+\label{fig:2_NPMLE}
+\end{subfigure}
+%
+
+
+\caption{The NPMLEs for the underlying distribution functions}
+\label{fig:image2}
+\end{figure}
+
+\begin{figure}[htp]
+%
+\begin{subfigure}{0.5\textwidth}
+\includegraphics[width=1\linewidth, height=1\linewidth]{Figure_west_ecdf.pdf}
+
+\caption{the West region}
+\label{fig:1_ecdf}
+\end{subfigure}
+%
+%
+\begin{subfigure}{0.5\textwidth}
+\includegraphics[width=1\linewidth,height=1\linewidth]{Figure_northeast+midwest_ecdf.pdf}
+\caption{the Northeast-Midwest region}
+\label{fig:2_ecdf}
+\end{subfigure}
+%
+
+\caption{The empirical cdfs}
+\label{fig:image2}
+\end{figure}
+
+
+
+\end{document}
